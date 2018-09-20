@@ -7,17 +7,29 @@
 		<version>9</version>
 	</parent>
 
-	<groupId>io.gatling</groupId>
-	<artifactId>gatling-maven-plugin</artifactId>
-	<version>3.0.1-SNAPSHOT</version>
-	<name>gatling-maven-plugin</name>
-	<description>gatling-maven-plugin</description>
+	<groupId>io.perfana</groupId>
+	<artifactId>perfana-gatling-maven-plugin</artifactId>
+	<version>3.0.0-SNAPSHOT</version>
+	<name>perfana-gatling-maven-plugin</name>
+	<description>Forked from gatling-maven-plugin, with perfana integration.</description>
 	<packaging>maven-plugin</packaging>
 
-	<inceptionYear>2011</inceptionYear>
-	<url>http://gatling.io</url>
+	<inceptionYear>2018</inceptionYear>
+	<url>http://perfana.io</url>
+
+
 
 	<developers>
+		<developer>
+			<id>daniel@perfana.io</id>
+			<name>Daniel Moll</name>
+			<organization>Perfana</organization>
+		</developer>
+		<developer>
+			<id>peter.paul.bakker@stokpop.nl</id>
+			<name>Peter Paul Bakker</name>
+			<organization>Stokpop</organization>
+		</developer>
 		<developer>
 			<id>slandelle@gatling.io</id>
 			<name>Stephane Landelle</name>
@@ -26,11 +38,18 @@
 	</developers>
 
 	<scm>
-		<connection>scm:git:git:@github.com:gatling/gatling-maven-plugin.git</connection>
-		<developerConnection>scm:git:git:@github.com:gatling/gatling-maven-plugin.git</developerConnection>
-		<url>https://github.com/gatling/gatling-maven-plugin</url>
+		<connection>scm:git:git:@github.com:perfana/perfana-gatling-maven-plugin.git</connection>
+		<developerConnection>scm:git:git:@github.com:perfana/perfana-gatling-maven-plugin.git</developerConnection>
+		<url>https://github.com/perfana/perfana-gatling-maven-plugin</url>
 		<tag>HEAD</tag>
 	</scm>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
 
 	<licenses>
 		<license>
@@ -106,6 +125,16 @@
 			<groupId>org.apache.maven</groupId>
 			<artifactId>maven-compat</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp</artifactId>
+			<version>3.8.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.jayway.jsonpath</groupId>
+			<artifactId>json-path</artifactId>
+			<version>2.4.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -139,6 +168,7 @@
 					<groupId>org.sonatype.plugins</groupId>
 					<artifactId>nexus-staging-maven-plugin</artifactId>
 					<version>${nexus-staging-maven-plugin.version}</version>
+					<extensions>true</extensions>
 					<configuration>
 						<serverId>sonatype-nexus-staging</serverId>
 						<nexusUrl>https://oss.sonatype.org/</nexusUrl>
@@ -193,4 +223,54 @@
 			</plugin>
 		</plugins>
 	</build>
+	<profiles>
+		<profile>
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<version>2.2.1</version>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>2.9.1</version>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.5</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>
