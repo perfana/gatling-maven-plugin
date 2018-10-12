@@ -134,7 +134,7 @@ public class PerfanaClient {
                 .build();
 
         int retries = 0;
-        final int MAX_RETRIES = 12;
+        final int MAX_RETRIES = 30;
         final long sleepInMillis = 10000;
         String assertions = null;
 
