@@ -9,7 +9,7 @@
 
 	<groupId>io.perfana</groupId>
 	<artifactId>perfana-gatling-maven-plugin</artifactId>
-	<version>3.0.0-SNAPSHOT</version>
+	<version>3.0.1</version>
 	<name>perfana-gatling-maven-plugin</name>
 	<description>Forked from gatling-maven-plugin, with perfana integration.</description>
 	<packaging>maven-plugin</packaging>
