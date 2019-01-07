@@ -416,9 +416,9 @@ public class GatlingMojo extends AbstractGatlingMojo {
     else {
 
       String assertionText = "All Perfana assertions are OK: \n";
-      if(requirementsResult) assertionText += requirementsDeeplink + "\n";
-      if(benchmarkPreviousTestRunResult) assertionText += benchmarkPreviousTestRunDeeplink + "\n";
-      if(benchmarkBaselineTestRunResult) assertionText += benchmarkBaselineTestRunDeeplink;
+      if(requirementsResult != null  && requirementsResult) assertionText += requirementsDeeplink + "\n";
+      if(benchmarkPreviousTestRunResult != null && benchmarkPreviousTestRunResult) assertionText += benchmarkPreviousTestRunDeeplink + "\n";
+      if(benchmarkBaselineTestRunResult != null && benchmarkBaselineTestRunResult) assertionText += benchmarkBaselineTestRunDeeplink;
 
       getLog().info(assertionText);
     }
