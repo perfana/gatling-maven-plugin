@@ -44,9 +44,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
 
 import static io.gatling.mojo.MojoConstants.COMPILER_JVM_ARGS;
 import static io.gatling.mojo.MojoConstants.COMPILER_MAIN_CLASS;
@@ -263,7 +263,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
   private boolean perfanaEnabled;
 
   /**
-   * Perfana: test run annotiations passed via environment variable
+   * Perfana: test run annotations passed via environment variable
    */
   @Parameter(property = "gatling.annotations", alias = "ann", defaultValue = "")
   private String annotations;
@@ -275,6 +275,12 @@ public class GatlingMojo extends AbstractGatlingMojo {
   private Properties variables;
 
   /**
+   * Perfana: properties for perfana event implementations
+   */
+  @Parameter(property = "gatling.perfanaEventProperties")
+  private Map<String, Properties> perfanaEventProperties;
+
+    /**
    * Executes Gatling simulations.
    */
   @Override
@@ -284,16 +290,12 @@ public class GatlingMojo extends AbstractGatlingMojo {
       return;
     }
 
-    final ScheduledExecutorService exec;
     final PerfanaClient perfanaClient = perfanaEnabled
             ? createPerfanaClient()
             : null;
 
-    if (perfanaEnabled) {
+    if (perfanaEnabled && perfanaClient != null) {
         perfanaClient.startSession();
-    }
-    else {
-        exec = null;
     }
 
     // Create results directories
@@ -333,7 +335,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
     } finally {
         copyJUnitReports();
     }
-    if (perfanaEnabled) {
+    if (perfanaEnabled && perfanaClient != null) {
         try {
             perfanaClient.stopSession();
         } catch (PerfanaClientException e) {
@@ -369,7 +371,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
           }
       };
 
-      return new PerfanaClientBuilder()
+      PerfanaClientBuilder builder = new PerfanaClientBuilder()
               .setApplication(application)
               .setTestType(testType)
               .setTestEnvironment(testEnvironment)
@@ -382,8 +384,15 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setAnnotations(annotations)
               .setVariables(variables)
               .setAssertResultsEnabled(assertResultsEnabled)
-              .setLogger(logger)
-              .createPerfanaClient();
+              .setLogger(logger);
+
+      if (perfanaEventProperties != null) {
+          perfanaEventProperties.forEach(
+                  (className, props) -> props.forEach(
+                          (name, value) -> builder.addEventProperty(className, (String) name, (String) value)));
+      }
+      
+      return builder.createPerfanaClient();
   }
   
   private void iterateBySimulations(Toolchain toolchain, List<String> jvmArgs, List<String> testClasspath, List<String> simulations) throws Exception {
