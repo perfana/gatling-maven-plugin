@@ -15,9 +15,9 @@
  */
 package io.gatling.mojo;
 
-import com.jayway.jsonpath.Configuration;
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.Option;
+import io.perfana.client.PerfanaClient;
+import io.perfana.client.PerfanaClientBuilder;
+import io.perfana.client.PerfanaClientException;
 import org.apache.commons.exec.ExecuteException;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
@@ -40,15 +40,20 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
-import static io.gatling.mojo.MojoConstants.*;
+import static io.gatling.mojo.MojoConstants.COMPILER_JVM_ARGS;
+import static io.gatling.mojo.MojoConstants.COMPILER_MAIN_CLASS;
+import static io.gatling.mojo.MojoConstants.GATLING_JVM_ARGS;
+import static io.gatling.mojo.MojoConstants.GATLING_MAIN_CLASS;
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static java.util.Arrays.asList;
 
 /**
  * Mojo to execute Gatling.
@@ -258,7 +263,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
   private boolean perfanaEnabled;
 
   /**
-   * Perfana: test run annotiations passed via environment variable
+   * Perfana: test run annotations passed via environment variable
    */
   @Parameter(property = "gatling.annotations", alias = "ann", defaultValue = "")
   private String annotations;
@@ -270,6 +275,12 @@ public class GatlingMojo extends AbstractGatlingMojo {
   private Properties variables;
 
   /**
+   * Perfana: properties for perfana event implementations
+   */
+  @Parameter(property = "gatling.perfanaEventProperties")
+  private Map<String, Properties> perfanaEventProperties;
+
+    /**
    * Executes Gatling simulations.
    */
   @Override
@@ -279,20 +290,12 @@ public class GatlingMojo extends AbstractGatlingMojo {
       return;
     }
 
-    final ScheduledExecutorService exec;
     final PerfanaClient perfanaClient = perfanaEnabled
             ? createPerfanaClient()
             : null;
 
-    if (perfanaEnabled) {
-      final int periodInSeconds = 15;
-      getLog().info(String.format("Calling Perfana (%s) keep alive every %d seconds.", perfanaUrl, periodInSeconds));
-      final PerfanaClient.KeepAliveRunner keepAliveRunner = new PerfanaClient.KeepAliveRunner(perfanaClient);
-      exec = Executors.newSingleThreadScheduledExecutor();
-      exec.scheduleAtFixedRate(keepAliveRunner, 0, periodInSeconds, TimeUnit.SECONDS);
-    }
-    else {
-      exec = null;
+    if (perfanaEnabled && perfanaClient != null) {
+        perfanaClient.startSession();
     }
 
     // Create results directories
@@ -332,98 +335,66 @@ public class GatlingMojo extends AbstractGatlingMojo {
     } finally {
         copyJUnitReports();
     }
-    if (perfanaEnabled) {
-      perfanaClient.callPerfana(true);
-      if (assertResultsEnabled) {
+    if (perfanaEnabled && perfanaClient != null) {
         try {
-          assertResultsPerfana(perfanaClient);
-        } catch (IOException e) {
-          throw new MojoExecutionException("Perfana assertions check failed. " + e.getMessage(), e);
+            perfanaClient.stopSession();
+        } catch (PerfanaClientException e) {
+            throw new MojoExecutionException("Perfana assertions check failed. " + e.getMessage(), e);
         }
-      }
-      else {
+    }
+    else {
         getLog().info("Perfana assertions disabled.");
-      }
     }
   }
 
   private PerfanaClient createPerfanaClient() {
-    PerfanaClient client = new PerfanaClient(application, testType, testEnvironment, testRunId, CIBuildResultsUrl, applicationRelease, rampupTimeInSeconds, constantLoadTimeInSeconds, perfanaUrl, annotations, variables);
-    client.injectLogger(new PerfanaClient.Logger() {
-      @Override
-      public void info(String message) {
-        getLog().info(message);
-      }
 
-      @Override
-      public void warn(String message) {
-        getLog().warn(message);
-      }
+      PerfanaClient.Logger logger = new PerfanaClient.Logger() {
+          @Override
+          public void info(String message) {
+              getLog().info(message);
+          }
 
-      @Override
-      public void error(String message) {
-        getLog().error(message);
-      }
+          @Override
+          public void warn(String message) {
+              getLog().warn(message);
+          }
 
-      @Override
-      public void debug(final String message) {
-        getLog().debug(message);
+          @Override
+          public void error(String message) {
+              getLog().error(message);
+          }
+
+          @Override
+          public void debug(final String message) {
+              getLog().debug(message);
+          }
+      };
+
+      PerfanaClientBuilder builder = new PerfanaClientBuilder()
+              .setApplication(application)
+              .setTestType(testType)
+              .setTestEnvironment(testEnvironment)
+              .setTestRunId(testRunId)
+              .setCIBuildResultsUrl(CIBuildResultsUrl)
+              .setApplicationRelease(applicationRelease)
+              .setRampupTimeInSeconds(rampupTimeInSeconds)
+              .setConstantLoadTimeInSeconds(constantLoadTimeInSeconds)
+              .setPerfanaUrl(perfanaUrl)
+              .setAnnotations(annotations)
+              .setVariables(variables)
+              .setAssertResultsEnabled(assertResultsEnabled)
+              .setLogger(logger);
+
+      if (perfanaEventProperties != null) {
+          perfanaEventProperties.forEach(
+                  (className, props) -> props.forEach(
+                          (name, value) -> builder.addEventProperty(className, (String) name, (String) value)));
       }
-    });
-    return client;
+      
+      return builder.createPerfanaClient();
   }
-
-  /**
-   * Call the target io assertions and let build fail when not OK
-   * @throws MojoExecutionException when the assertion check fails or
-   * a technical issue occurs
-   * @param perfanaClient call this client
-   */
-
-
-  Configuration config = Configuration.defaultConfiguration()
-          .addOptions(Option.SUPPRESS_EXCEPTIONS);
-
-  private void assertResultsPerfana(PerfanaClient perfanaClient) throws MojoExecutionException, IOException {
-    final String assertions = perfanaClient.callCheckAsserts();
-    if (assertions == null) {
-      throw new MojoExecutionException("Perfana assertions could not be checked, received null");
-    }
-
-
-    Boolean benchmarkBaselineTestRunResult = JsonPath.using(config).parse(assertions).read("$.benchmarkBaselineTestRun.result");
-    String benchmarkBaselineTestRunDeeplink = JsonPath.using(config).parse(assertions).read("$.benchmarkBaselineTestRun.deeplink");
-    Boolean benchmarkPreviousTestRunResult = JsonPath.using(config).parse(assertions).read("$.benchmarkPreviousTestRun.result");
-    String benchmarkPreviousTestRunDeeplink = JsonPath.using(config).parse(assertions).read("$.benchmarkPreviousTestRun.deeplink");
-    Boolean requirementsResult = JsonPath.using(config).parse(assertions).read("$.requirements.result");
-    String requirementsDeeplink = JsonPath.using(config).parse(assertions).read("$.requirements.deeplink");
-
-    getLog().info("benchmarkBaselineTestRunResult: "  + benchmarkBaselineTestRunResult);
-    getLog().info("benchmarkPreviousTestRunResult: " + benchmarkPreviousTestRunResult);
-    getLog().info("requirementsResult: " + requirementsResult);
-
-    if (assertions.contains("false")) {
-
-      String assertionText = "One or more Perfana assertions are failing: \n";
-      if(requirementsResult != null && requirementsResult == false) assertionText += "Requirements failed: " + requirementsDeeplink + "\n";
-      if(benchmarkPreviousTestRunResult != null && benchmarkPreviousTestRunResult == false) assertionText += "Benchmark to previous test run failed: " + benchmarkPreviousTestRunDeeplink + "\n";
-      if(benchmarkBaselineTestRunResult != null && benchmarkBaselineTestRunResult == false) assertionText += "Benchmark to baseline test run failed: " + benchmarkBaselineTestRunDeeplink;
-
-      getLog().info("assertionText: " + assertionText);
-
-      throw new MojoExecutionException( assertionText );
-    }
-    else {
-
-      String assertionText = "All Perfana assertions are OK: \n";
-      if(requirementsResult != null  && requirementsResult) assertionText += requirementsDeeplink + "\n";
-      if(benchmarkPreviousTestRunResult != null && benchmarkPreviousTestRunResult) assertionText += benchmarkPreviousTestRunDeeplink + "\n";
-      if(benchmarkBaselineTestRunResult != null && benchmarkBaselineTestRunResult) assertionText += benchmarkBaselineTestRunDeeplink;
-
-      getLog().info(assertionText);
-    }
-  }
-
+  
   private void iterateBySimulations(Toolchain toolchain, List<String> jvmArgs, List<String> testClasspath, List<String> simulations) throws Exception {
     Exception exc = null;
     int simulationsCount = simulations.size();
