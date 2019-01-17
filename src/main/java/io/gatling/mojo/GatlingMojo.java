@@ -217,7 +217,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
   /**
    * Perfana: Test run id.
    */
-  @Parameter(property = "gatling.testRunId", alias = "tid", defaultValue = "UNKNOWN_TEST_RUN_ID")
+  @Parameter(property = "gatling.testRunId", alias = "tid")
   private String testRunId;
 
   /**
@@ -272,7 +272,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
    * Perfana: test run variables passed via environment variable
    */
   @Parameter(property = "gatling.variables")
-  private Properties variables;
+  private Map<String, String> variables;
 
   /**
    * Perfana: properties for perfana event implementations
@@ -280,7 +280,13 @@ public class GatlingMojo extends AbstractGatlingMojo {
   @Parameter(property = "gatling.perfanaEventProperties")
   private Map<String, Properties> perfanaEventProperties;
 
-    /**
+  /**
+   * Perfana: properties for perfana event implementations
+   */
+  @Parameter(property = "gatling.scheduleEvents")
+  private List<String> scheduleEvents;
+
+  /**
    * Executes Gatling simulations.
    */
   @Override
@@ -375,7 +381,6 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setApplication(application)
               .setTestType(testType)
               .setTestEnvironment(testEnvironment)
-              .setTestRunId(testRunId)
               .setCIBuildResultsUrl(CIBuildResultsUrl)
               .setApplicationRelease(applicationRelease)
               .setRampupTimeInSeconds(rampupTimeInSeconds)
@@ -384,8 +389,14 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setAnnotations(annotations)
               .setVariables(variables)
               .setAssertResultsEnabled(assertResultsEnabled)
-              .setLogger(logger);
+              .setLogger(logger)
+              .setScheduleEvents(scheduleEvents);
 
+      if (!isEmpty(testRunId)) {
+          // otherwise use default with unique id
+          builder.setTestRunId(testRunId);
+      }
+      
       if (perfanaEventProperties != null) {
           perfanaEventProperties.forEach(
                   (className, props) -> props.forEach(
@@ -394,8 +405,12 @@ public class GatlingMojo extends AbstractGatlingMojo {
       
       return builder.createPerfanaClient();
   }
-  
-  private void iterateBySimulations(Toolchain toolchain, List<String> jvmArgs, List<String> testClasspath, List<String> simulations) throws Exception {
+
+    private static boolean isEmpty(String variable) {
+        return variable == null || variable.trim().isEmpty();
+    }
+
+    private void iterateBySimulations(Toolchain toolchain, List<String> jvmArgs, List<String> testClasspath, List<String> simulations) throws Exception {
     Exception exc = null;
     int simulationsCount = simulations.size();
     for (int i = 0; i < simulationsCount; i++) {
