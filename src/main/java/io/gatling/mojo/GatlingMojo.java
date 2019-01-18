@@ -281,12 +281,12 @@ public class GatlingMojo extends AbstractGatlingMojo {
   private Map<String, Properties> perfanaEventProperties;
 
   /**
-   * Perfana: properties for perfana event implementations
+   * Perfana: schedule script with events, one event per line, such as: PT1M|scale-down|replicas=2
    */
-  @Parameter(property = "gatling.scheduleEvents")
-  private List<String> scheduleEvents;
+  @Parameter(property = "gatling.eventsScheduleScript")
+  private String eventsScheduleScript;
 
-  /**
+    /**
    * Executes Gatling simulations.
    */
   @Override
@@ -390,7 +390,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setVariables(variables)
               .setAssertResultsEnabled(assertResultsEnabled)
               .setLogger(logger)
-              .setScheduleEvents(scheduleEvents);
+              .setScheduleEvents(eventsScheduleScript);
 
       if (!isEmpty(testRunId)) {
           // otherwise use default with unique id
