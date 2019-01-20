@@ -17,7 +17,13 @@ package io.gatling.mojo;
 
 import io.perfana.client.PerfanaClient;
 import io.perfana.client.PerfanaClientBuilder;
-import io.perfana.client.PerfanaClientException;
+import io.perfana.client.api.PerfanaClientLogger;
+import io.perfana.client.api.PerfanaConnectionSettings;
+import io.perfana.client.api.PerfanaConnectionSettingsBuilder;
+import io.perfana.client.api.PerfanaTestContext;
+import io.perfana.client.api.PerfanaTestContextBuilder;
+import io.perfana.client.exception.PerfanaAssertionsAreFalse;
+import io.perfana.client.exception.PerfanaClientException;
 import org.apache.commons.exec.ExecuteException;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
@@ -223,7 +229,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
   /**
    * Perfana: Build results url where to find the results of this load test.
    */
-  @Parameter(property = "gatling.CIBuildResultsUrl", alias = "url", defaultValue = "")
+  @Parameter(property = "gatling.CIBuildResultsUrl", alias = "url")
   private String CIBuildResultsUrl;
 
   /**
@@ -235,19 +241,19 @@ public class GatlingMojo extends AbstractGatlingMojo {
   /**
    * Perfana: the release number of the application.
    */
-  @Parameter(property = "gatling.applicationRelease", alias = "pr", defaultValue = "")
+  @Parameter(property = "gatling.applicationRelease", alias = "pr")
   private String applicationRelease;
 
   /**
    * Perfana: Rampup time in seconds.
    */
-  @Parameter(property = "gatling.rampupTimeInSeconds", alias = "rt", defaultValue = "")
+  @Parameter(property = "gatling.rampupTimeInSeconds", alias = "rt")
   private String rampupTimeInSeconds;
 
   /**
    * Perfana: Constan load time in seconds.
    */
-  @Parameter(property = "gatling.constantLoadTimeInSeconds", alias = "pd", defaultValue = "")
+  @Parameter(property = "gatling.constantLoadTimeInSeconds", alias = "pd")
   private String constantLoadTimeInSeconds;
 
   /**
@@ -265,7 +271,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
   /**
    * Perfana: test run annotations passed via environment variable
    */
-  @Parameter(property = "gatling.annotations", alias = "ann", defaultValue = "")
+  @Parameter(property = "gatling.annotations", alias = "ann")
   private String annotations;
 
   /**
@@ -283,10 +289,10 @@ public class GatlingMojo extends AbstractGatlingMojo {
   /**
    * Perfana: schedule script with events, one event per line, such as: PT1M|scale-down|replicas=2
    */
-  @Parameter(property = "gatling.eventsScheduleScript")
-  private String eventsScheduleScript;
+  @Parameter(property = "gatling.eventScheduleScript")
+  private String eventScheduleScript;
 
-    /**
+  /**
    * Executes Gatling simulations.
    */
   @Override
@@ -296,12 +302,20 @@ public class GatlingMojo extends AbstractGatlingMojo {
       return;
     }
 
+    boolean abortPerfana = false;
     final PerfanaClient perfanaClient = perfanaEnabled
             ? createPerfanaClient()
             : null;
 
     if (perfanaEnabled && perfanaClient != null) {
         perfanaClient.startSession();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (perfanaEnabled && !perfanaClient.isSessionStopped()) {
+                getLog().info("Shutdown Hook: abort perfana session!");
+                perfanaClient.abortSession();
+            }
+        }));
     }
 
     // Create results directories
@@ -326,6 +340,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
 
     } catch (Exception e) {
       if (failOnError) {
+        abortPerfana = true;
         if (e instanceof GatlingSimulationAssertionsFailedException) {
           throw new MojoFailureException(e.getMessage(), e);
         } else if (e instanceof MojoFailureException) {
@@ -340,22 +355,24 @@ public class GatlingMojo extends AbstractGatlingMojo {
       }
     } finally {
         copyJUnitReports();
+        if (perfanaEnabled && perfanaClient != null && abortPerfana) {
+            perfanaClient.abortSession();
+        }
     }
     if (perfanaEnabled && perfanaClient != null) {
         try {
             perfanaClient.stopSession();
         } catch (PerfanaClientException e) {
             throw new MojoExecutionException("Perfana assertions check failed. " + e.getMessage(), e);
+        } catch (PerfanaAssertionsAreFalse perfanaAssertionsAreFalse) {
+            throw new MojoExecutionException("Perfana assertions check is false. " + perfanaAssertionsAreFalse.getMessage(), perfanaAssertionsAreFalse);
         }
-    }
-    else {
-        getLog().info("Perfana assertions disabled.");
     }
   }
 
   private PerfanaClient createPerfanaClient() {
 
-      PerfanaClient.Logger logger = new PerfanaClient.Logger() {
+      PerfanaClientLogger logger = new PerfanaClientLogger() {
           @Override
           public void info(String message) {
               getLog().info(message);
@@ -377,7 +394,8 @@ public class GatlingMojo extends AbstractGatlingMojo {
           }
       };
 
-      PerfanaClientBuilder builder = new PerfanaClientBuilder()
+      PerfanaTestContext context = new PerfanaTestContextBuilder()
+              .setTestRunId(testRunId)
               .setApplication(application)
               .setTestType(testType)
               .setTestEnvironment(testEnvironment)
@@ -385,17 +403,20 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setApplicationRelease(applicationRelease)
               .setRampupTimeInSeconds(rampupTimeInSeconds)
               .setConstantLoadTimeInSeconds(constantLoadTimeInSeconds)
-              .setPerfanaUrl(perfanaUrl)
               .setAnnotations(annotations)
               .setVariables(variables)
+              .build();
+
+      PerfanaConnectionSettings settings = new PerfanaConnectionSettingsBuilder()
+              .setPerfanaUrl(perfanaUrl)
+              .build();
+
+      PerfanaClientBuilder builder = new PerfanaClientBuilder()
+              .setPerfanaTestContext(context)
+              .setPerfanaConnectionSettings(settings)
               .setAssertResultsEnabled(assertResultsEnabled)
               .setLogger(logger)
-              .setScheduleEvents(eventsScheduleScript);
-
-      if (!isEmpty(testRunId)) {
-          // otherwise use default with unique id
-          builder.setTestRunId(testRunId);
-      }
+              .setScheduleEvents(eventScheduleScript);
       
       if (perfanaEventProperties != null) {
           perfanaEventProperties.forEach(
@@ -403,14 +424,10 @@ public class GatlingMojo extends AbstractGatlingMojo {
                           (name, value) -> builder.addEventProperty(className, (String) name, (String) value)));
       }
       
-      return builder.createPerfanaClient();
+      return builder.build();
   }
 
-    private static boolean isEmpty(String variable) {
-        return variable == null || variable.trim().isEmpty();
-    }
-
-    private void iterateBySimulations(Toolchain toolchain, List<String> jvmArgs, List<String> testClasspath, List<String> simulations) throws Exception {
+  private void iterateBySimulations(Toolchain toolchain, List<String> jvmArgs, List<String> testClasspath, List<String> simulations) throws Exception {
     Exception exc = null;
     int simulationsCount = simulations.size();
     for (int i = 0; i < simulationsCount; i++) {

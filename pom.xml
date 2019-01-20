@@ -9,7 +9,7 @@
 
 	<groupId>io.perfana</groupId>
 	<artifactId>perfana-gatling-maven-plugin</artifactId>
-	<version>3.2.0-SNAPSHOT</version>
+	<version>3.2.1-SNAPSHOT</version>
 	<name>perfana-gatling-maven-plugin</name>
 	<description>Forked from gatling-maven-plugin, with Perfana integration.</description>
 	<packaging>maven-plugin</packaging>
@@ -103,7 +103,7 @@
             <dependency>
                 <groupId>io.perfana</groupId>
                 <artifactId>perfana-java-client</artifactId>
-                <version>1.2.0</version>
+                <version>1.2.1-SNAPSHOT</version>
             </dependency>
 		</dependencies>
 	</dependencyManagement>
@@ -162,6 +162,14 @@
 					<configuration>
 						<header>${header.basedir}/src/etc/header.txt</header>
 						<strictCheck>false</strictCheck>
+                        <excludes>
+                            <exclude>src/main/resources/*</exclude>
+                            <exclude>**/LICENSE.*</exclude>
+                            <exclude>**/*.md</exclude>
+                            <exclude>.gitignore</exclude>
+                            <exclude>make_credentials.py</exclude>
+                            <exclude>.idea/**</exclude>
+                        </excludes>
 					</configuration>
 					<executions>
 						<execution>
@@ -181,19 +189,6 @@
 						<serverId>sonatype-nexus-staging</serverId>
 						<nexusUrl>https://oss.sonatype.org/</nexusUrl>
 						<autoReleaseAfterClose>true</autoReleaseAfterClose>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>com.mycila.maven-license-plugin</groupId>
-					<artifactId>maven-license-plugin</artifactId>
-					<configuration>
-						<excludes>
-							<exclude>src/main/resources/*</exclude>
-							<exclude>**/LICENSE</exclude>
-							<exclude>**/*.md</exclude>
-							<exclude>.gitignore</exclude>
-							<exclude>make_credentials.py</exclude>
-						</excludes>
 					</configuration>
 				</plugin>
 			</plugins>
