@@ -17,7 +17,13 @@ package io.gatling.mojo;
 
 import io.perfana.client.PerfanaClient;
 import io.perfana.client.PerfanaClientBuilder;
-import io.perfana.client.PerfanaClientException;
+import io.perfana.client.api.PerfanaClientLogger;
+import io.perfana.client.api.PerfanaConnectionSettings;
+import io.perfana.client.api.PerfanaConnectionSettingsBuilder;
+import io.perfana.client.api.PerfanaTestContext;
+import io.perfana.client.api.PerfanaTestContextBuilder;
+import io.perfana.client.exception.PerfanaAssertionsAreFalse;
+import io.perfana.client.exception.PerfanaClientException;
 import org.apache.commons.exec.ExecuteException;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
