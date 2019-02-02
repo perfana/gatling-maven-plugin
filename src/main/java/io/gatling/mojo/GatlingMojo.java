@@ -389,6 +389,11 @@ public class GatlingMojo extends AbstractGatlingMojo {
           }
 
           @Override
+          public void error(String message, Throwable throwable) {
+            getLog().error(message, throwable);
+          }
+
+          @Override
           public void debug(final String message) {
               getLog().debug(message);
           }
