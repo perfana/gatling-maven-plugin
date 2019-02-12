@@ -410,6 +410,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setConstantLoadTimeInSeconds(constantLoadTimeInSeconds)
               .setAnnotations(annotations)
               .setVariables(variables)
+              .setLogger(logger)
               .build();
 
       PerfanaConnectionSettings settings = new PerfanaConnectionSettingsBuilder()
@@ -420,8 +421,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setPerfanaTestContext(context)
               .setPerfanaConnectionSettings(settings)
               .setAssertResultsEnabled(assertResultsEnabled)
-              .setLogger(logger)
-              .setScheduleEvents(eventScheduleScript);
+              .setCustomEvents(eventScheduleScript);
       
       if (perfanaEventProperties != null) {
           perfanaEventProperties.forEach(
