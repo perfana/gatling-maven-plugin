@@ -20,8 +20,8 @@ import io.perfana.client.PerfanaClientBuilder;
 import io.perfana.client.api.PerfanaClientLogger;
 import io.perfana.client.api.PerfanaConnectionSettings;
 import io.perfana.client.api.PerfanaConnectionSettingsBuilder;
-import io.perfana.client.api.PerfanaTestContext;
-import io.perfana.client.api.PerfanaTestContextBuilder;
+import io.perfana.client.api.TestContext;
+import io.perfana.client.api.TestContextBuilder;
 import io.perfana.client.exception.PerfanaAssertionsAreFalse;
 import io.perfana.client.exception.PerfanaClientException;
 import org.apache.commons.exec.ExecuteException;
@@ -399,7 +399,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
           }
       };
 
-      PerfanaTestContext context = new PerfanaTestContextBuilder()
+      TestContext context = new TestContextBuilder()
               .setTestRunId(testRunId)
               .setApplication(application)
               .setTestType(testType)
@@ -410,7 +410,6 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setConstantLoadTimeInSeconds(constantLoadTimeInSeconds)
               .setAnnotations(annotations)
               .setVariables(variables)
-              .setLogger(logger)
               .build();
 
       PerfanaConnectionSettings settings = new PerfanaConnectionSettingsBuilder()
@@ -418,7 +417,8 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .build();
 
       PerfanaClientBuilder builder = new PerfanaClientBuilder()
-              .setPerfanaTestContext(context)
+              .setLogger(logger)
+              .setTestContext(context)
               .setPerfanaConnectionSettings(settings)
               .setAssertResultsEnabled(assertResultsEnabled)
               .setCustomEvents(eventScheduleScript);
