@@ -103,7 +103,7 @@
             <dependency>
                 <groupId>io.perfana</groupId>
                 <artifactId>perfana-java-client</artifactId>
-                <version>1.3.0-SNAPSHOT</version>
+                <version>1.3.2-SNAPSHOT</version>
             </dependency>
 		</dependencies>
 	</dependencyManagement>
