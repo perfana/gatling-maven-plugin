@@ -9,7 +9,7 @@
 
 	<groupId>io.perfana</groupId>
 	<artifactId>perfana-gatling-maven-plugin</artifactId>
-	<version>3.2.4</version>
+	<version>3.2.5</version>
 	<name>perfana-gatling-maven-plugin</name>
 	<description>Forked from gatling-maven-plugin, with Perfana integration.</description>
 	<packaging>maven-plugin</packaging>
@@ -103,7 +103,7 @@
             <dependency>
                 <groupId>io.perfana</groupId>
                 <artifactId>perfana-java-client</artifactId>
-                <version>1.3.2</version>
+                <version>1.3.3</version>
             </dependency>
 		</dependencies>
 	</dependencyManagement>
