@@ -281,6 +281,12 @@ public class GatlingMojo extends AbstractGatlingMojo {
   private Properties variables;
 
   /**
+   * Perfana: test run tags via environment variable
+   */
+  @Parameter(property = "gatling.tags")
+  private List tags;
+
+  /**
    * Perfana: properties for perfana event implementations
    */
   @Parameter(property = "gatling.perfanaEventProperties")
@@ -410,6 +416,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
               .setConstantLoadTimeInSeconds(constantLoadTimeInSeconds)
               .setAnnotations(annotations)
               .setVariables(variables)
+              .setTags(tags)
               .build();
 
       PerfanaConnectionSettings settings = new PerfanaConnectionSettingsBuilder()
