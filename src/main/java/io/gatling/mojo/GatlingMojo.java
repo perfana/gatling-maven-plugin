@@ -17,11 +17,7 @@ package io.gatling.mojo;
 
 import io.perfana.client.PerfanaClient;
 import io.perfana.client.PerfanaClientBuilder;
-import io.perfana.client.api.PerfanaClientLogger;
-import io.perfana.client.api.PerfanaConnectionSettings;
-import io.perfana.client.api.PerfanaConnectionSettingsBuilder;
-import io.perfana.client.api.TestContext;
-import io.perfana.client.api.TestContextBuilder;
+import io.perfana.client.api.*;
 import io.perfana.client.exception.PerfanaAssertionsAreFalse;
 import io.perfana.client.exception.PerfanaClientException;
 import org.apache.commons.exec.ExecuteException;
@@ -46,18 +42,9 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
-import static io.gatling.mojo.MojoConstants.COMPILER_JVM_ARGS;
-import static io.gatling.mojo.MojoConstants.COMPILER_MAIN_CLASS;
-import static io.gatling.mojo.MojoConstants.GATLING_JVM_ARGS;
-import static io.gatling.mojo.MojoConstants.GATLING_MAIN_CLASS;
+import static io.gatling.mojo.MojoConstants.*;
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -281,10 +268,10 @@ public class GatlingMojo extends AbstractGatlingMojo {
   private Properties variables;
 
   /**
-   * Perfana: test run tags via environment variable
+   * Perfana: test run comma separated tags via environment variable
    */
   @Parameter(property = "gatling.tags")
-  private List<String> tags;
+  private String tags;
 
   /**
    * Perfana: properties for perfana event implementations
