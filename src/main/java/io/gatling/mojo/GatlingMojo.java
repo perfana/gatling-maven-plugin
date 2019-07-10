@@ -284,7 +284,7 @@ public class GatlingMojo extends AbstractGatlingMojo {
    * Perfana: test run tags via environment variable
    */
   @Parameter(property = "gatling.tags")
-  private List tags;
+  private List<String> tags;
 
   /**
    * Perfana: properties for perfana event implementations
